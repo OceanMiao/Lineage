@@ -4,8 +4,7 @@ import com.facebook.presto.sql.tree._
 
 import scala.collection.mutable
 
-//TODO: controllare se il nome che si sta specificando è un nome qualificato oppure no.
-// Se non è un nome qualificato -> trasformarlo in uno! Tenere conto del dialetto
+
 class DependencyVisitor extends DefaultTraversalVisitor[List[String], List[String]] {
 
 	val dependencies: mutable.MutableList[String] = mutable.MutableList[String]()

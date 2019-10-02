@@ -1,7 +1,14 @@
 node {
         size: 20px, 20px;
-        fill-mode: plain;   /* Default.          */
-        fill-color: lightBlue;    /* Default is black. */
-        stroke-mode: plain; /* Default is none.  */
+        fill-mode: plain;
+        fill-color: lightBlue;
+        stroke-mode: plain;
         stroke-width: 2px;
+
  }
+
+ graph {
+     text-padding: 3px;
+     text-background-mode: rounded-box;
+     text-background-color: lightGreen;
+}

@@ -3,7 +3,7 @@ import visitors._
 import com.facebook.presto.sql.parser.{IdentifierSymbol, ParsingOptions, SqlParser, SqlParserOptions}
 import org.graphstream.graph.implementations._
 
-object main {
+object MainCommandLine {
 
 	private val DEBUG = false
 	private val CSS_PATH = "C:\\Users\\mdivincenzo\\Documents\\Scala\\Lineage\\graph.css"
@@ -22,7 +22,7 @@ object main {
 		raw.foreach( (mapEntry) => mapEntry._2.foreach(dep => graph.addEdge[AbstractEdge](mapEntry._1 + dep, dep, mapEntry._1,  true)))
 
 		// Visualizzazione
-		graph.addAttribute("ui.stylesheet", "url(file:///"+CSS_PATH+")")
+		graph.addAttribute("ui.stylesheet", "url(file:///" + CSS_PATH + ")")
 		graph.addAttribute("ui.antialias")
 		val x = graph.display()
 
