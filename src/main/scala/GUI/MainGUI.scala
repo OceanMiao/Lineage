@@ -1,7 +1,7 @@
 package GUI
 
 import java.awt.event.{ActionEvent, ActionListener, MouseWheelEvent, MouseWheelListener}
-import java.awt.{BorderLayout, Event}
+import java.awt.{BorderLayout, Event, GridBagLayout}
 import java.io.File
 
 import SQL.{AnsiDialect, Dialect, SQLScriptParser, SQLServerDialect}
@@ -33,7 +33,17 @@ object MainGUI  extends App with ActionListener with ViewerListener {
 	override def buttonPushed(id: String) = {}
 
 	// Metodo invocato quando si alza il click su un nodo
-	override def buttonReleased(id: String) = {}
+	override def buttonReleased(id: String): Unit = {
+		val node = graph.getNode[MultiNode](id)
+		if (node.hasAttribute("ui.class") && node.getAttribute[String]("ui.class") == "clicked") {
+			node.removeAttribute("ui.class")
+			node.addAttribute("ui.class", "")
+			return
+		}
+		if (!node.hasAttribute("ui.class") || (node.hasAttribute("ui.class") && node.getAttribute[String]("ui.class")==""))
+			node.addAttribute("ui.class", "clicked")
+
+	}
 
 	override def actionPerformed(e: ActionEvent): Unit = {
 		/*  MI DISPIACE che sia codice così "javoso" qua, si potrebbe rifattorizzare */
@@ -125,6 +135,7 @@ object MainGUI  extends App with ActionListener with ViewerListener {
 		})
 
 		frame.getContentPane.add(BorderLayout.CENTER, graphPanel)
+		graphPanel.setLayout(new BorderLayout)
 		graphPanel.add(BorderLayout.PAGE_START, topLine)
 		graphPanel.add(BorderLayout.SOUTH, bottomLine)
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE)
