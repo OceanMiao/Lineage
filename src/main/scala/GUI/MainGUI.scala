@@ -1,7 +1,7 @@
 package GUI
 
 import java.awt.event.{ActionEvent, ActionListener, MouseWheelEvent, MouseWheelListener}
-import java.awt.{BorderLayout, Event, GridBagLayout}
+import java.awt.{BorderLayout, Event, GridBagLayout, Color}
 import java.io.File
 
 import SQL.{AnsiDialect, Dialect, SQLScriptParser, SQLServerDialect}
@@ -24,7 +24,7 @@ object MainGUI  extends App with ActionListener with ViewerListener {
 	private var graph:MultiGraph = _
 	private var fromViewer:ViewerPipe= _
 
-
+	// Per gestire il loop eventi dal grafo
 	private var loop:Boolean = true
 
 	override def viewClosed(viewName: String) = loop = false
@@ -58,7 +58,8 @@ object MainGUI  extends App with ActionListener with ViewerListener {
 			fc.setDialogTitle("Choose an SQL file to open")
 			fc.showOpenDialog(frame)
 			if (fc.getSelectedFile != null) {
-				graphMap = parse(fc.getSelectedFile.getAbsolutePath, dialects(dialectChooser.getSelectedItem.toString))
+				val parsedMap = Controller.parse(fc.getSelectedFile.getAbsolutePath, dialects(dialectChooser.getSelectedItem.toString)).toSeq
+				graphMap = collection.mutable.Map[String, List[String]]((graphMap.toSeq ++ parsedMap).groupBy(_._1).mapValues(_.map(_._2).flatten.toList).toSeq: _*)
 				updateGraph(graphMap.toMap)
 			}
 		}
@@ -96,22 +97,6 @@ object MainGUI  extends App with ActionListener with ViewerListener {
 
 	}
 
-	private def parse(path:String, dialect:Dialect) : collection.mutable.Map[String, List[String]] = {
-		val x = new SQLScriptParser(filePath = path, dialect)
-		val querys = x.parse()
-		x.close()
-
-		val mappa = collection.mutable.Map[String, List[String]]()
-		for (q <- querys) {
-			val visitor = new DependencyVisitor
-			visitor.process(q)
-			/*	println(visitor.table + ": " + visitor.dependencies.distinct.toList)*/
-			mappa += (dialect.quoted(visitor.table) -> visitor.dependencies.distinct.toList.map(dialect.quoted(_)))
-			println("Processed dependencies for table " + visitor.table)
-		}
-
-		mappa
-	}
 
 	private def updateGraph(graphMap:Map[String, List[String]], filterCombobox:Boolean = true): Unit = {
 		if (graphPanel != null) {
@@ -137,13 +122,15 @@ object MainGUI  extends App with ActionListener with ViewerListener {
 		frame.getContentPane.add(BorderLayout.CENTER, graphPanel)
 		graphPanel.setLayout(new BorderLayout)
 		graphPanel.add(BorderLayout.PAGE_START, topLine)
-		graphPanel.add(BorderLayout.SOUTH, bottomLine)
+		if (graphMap.keySet.size > 0)
+			graphPanel.add(BorderLayout.SOUTH, bottomLine)
+
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE)
 		viewer.enableAutoLayout()
 
 		if (filterCombobox) {
 			tf.removeAllItems()
-			graphMap.keySet.foreach(tf.addItem(_))
+			graphMap.keySet.toList.sorted.foreach(tf.addItem(_))
 		}
 
 		fromViewer = viewer.newViewerPipe
@@ -168,6 +155,7 @@ object MainGUI  extends App with ActionListener with ViewerListener {
 	val topLine: JPanel = new JPanel // the panel is not visible in output
 	topLine.add(fileChoose)
 	topLine.add(dialectChooser)
+	topLine.setBackground(Color.WHITE)
 
 
 	//Creazione Barra in basso
@@ -186,11 +174,8 @@ object MainGUI  extends App with ActionListener with ViewerListener {
 	bottomLine.add(search)
 	bottomLine.add(reset)
 
-	//frame.getContentPane.add(BorderLayout.SOUTH, bottomLine)
-	frame.getContentPane.add(BorderLayout.CENTER, topLine)
-	frame.setSize(300, 100)
+	this.updateGraph(graphMap.toMap)
 
-	frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE)
 	frame.setVisible(true)
 
 	while (loop) { if (fromViewer != null) fromViewer.pump() }
