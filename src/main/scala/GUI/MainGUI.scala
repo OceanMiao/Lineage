@@ -1,22 +1,21 @@
 package GUI
 
 import java.awt.event.{ActionEvent, ActionListener, MouseWheelEvent, MouseWheelListener}
-import java.awt.{BorderLayout, Event, GridBagLayout, Color}
+import java.awt.{BorderLayout, Color, Event}
 import java.io.File
 
-import SQL.{AnsiDialect, Dialect, SQLScriptParser, SQLServerDialect}
-import javax.swing.{SwingUtilities, _}
+
+import SQL.{Dialect, SQLServerDialect}
 import javax.swing.filechooser.FileFilter
+import javax.swing.{SwingUtilities, _}
 import org.graphstream.graph.implementations._
 import org.graphstream.ui.swingViewer._
 import org.graphstream.ui.view._
-import visitors.DependencyVisitor
 
 object MainGUI  extends App with ActionListener with ViewerListener {
-
-	private val search_icon = "C:\\Users\\mdivincenzo\\Documents\\Scala\\Lineage\\resources\\search.png"
-	private val CSS_PATH = "C:\\Users\\mdivincenzo\\Documents\\Scala\\Lineage\\graph.css"
-	private val dialects = Map[String, Dialect](("SQLServer" -> new SQLServerDialect),("ANSI" -> new AnsiDialect))
+	private val search_icon = "./resources/search.png"
+	private val CSS_PATH = System.getProperty("user.dir") + "/graph.css"
+	private val dialects = Map[String, Dialect](("SQLServer" -> new SQLServerDialect))
 
 	private var graphMap: collection.mutable.Map[String, List[String]] = collection.mutable.Map[String, List[String]]()
 	private var viewer:Viewer = _
@@ -178,7 +177,10 @@ object MainGUI  extends App with ActionListener with ViewerListener {
 
 	frame.setVisible(true)
 
-	while (loop) { if (fromViewer != null) fromViewer.pump() }
+
+	while (loop) {
+		if (fromViewer != null) fromViewer.pump()
+	}
 
 
 }

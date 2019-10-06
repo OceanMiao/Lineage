@@ -1,9 +1,11 @@
-import SQL.{SQLScriptParser, SQLServerDialect}
+import SQL.SQLServerDialect
 import visitors._
-import com.facebook.presto.sql.parser.{IdentifierSymbol, ParsingOptions, SqlParser, SqlParserOptions}
+import org.antlr.v4.runtime.{CharStreams, CommonTokenStream, ParserRuleContext}
+import org.antlr.v4.runtime.tree.{ErrorNode, ParseTree, ParseTreeListener, ParseTreeWalker, TerminalNode}
 import org.graphstream.graph.implementations._
+import TSql._
 
-object MainCommandLine {
+object MainCommandLine  {
 
 	private val DEBUG = false
 	private val CSS_PATH = "C:\\Users\\mdivincenzo\\Documents\\Scala\\Lineage\\graph.css"
@@ -29,32 +31,16 @@ object MainCommandLine {
 	}
 
 	def main(args: Array[String]) : Unit = {
-		if (DEBUG) {
-			val sql_debug = ""
-			val parser = new SqlParser((new SqlParserOptions).allowIdentifierSymbol(IdentifierSymbol.AT_SIGN))
-			val parsed = parser.createStatement(sql_debug, ParsingOptions.builder().
-				setDecimalLiteralTreatment(ParsingOptions.DecimalLiteralTreatment.AS_DECIMAL).
-				build())
-			println(parsed)
-			System.exit(0)
-		}
 
-		val path = "C:\\Users\\mdivincenzo\\Documents\\Scala\\Lineage\\02_Proc_Modulo_Creazione_Parco_osservato.sql"
-		val dialect = new SQLServerDialect
-		val x = new SQLScriptParser(filePath = path, dialect)
-		val querys = x.parse()
-		x.close()
+		val lexer = new TSqlLexer (CharStreams.fromString("select a=sum(x) over (partition by pluto), b=2*c into yuo from pluto left join pluto e on id=x".toUpperCase()))
+		val cts = new CommonTokenStream(lexer)
 
-		val mappa = collection.mutable.Map[String, List[String]]()
-		for (q <- querys) {
-			val visitor = new DependencyVisitor
-			visitor.process(q)
-		/*	println(visitor.table + ": " + visitor.dependencies.distinct.toList)*/
-			mappa += (dialect.quoted(visitor.table) -> visitor.dependencies.distinct.toList.map(dialect.quoted(_)))
-			println("Processed dependencies for table " + visitor.table)
-		}
+		val parser = new TSqlParser(cts)
 
-		visualizeGraph(mappa.toMap)
+		val tree = parser.tsql_file
+		tree.accept(new TSqlVisitor[Unit])
 
 	}
+
+
 }

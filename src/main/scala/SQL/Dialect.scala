@@ -1,33 +1,34 @@
 package SQL
 
-import com.facebook.presto.sql.parser.IdentifierSymbol
+import org.antlr.v4.runtime.tree.{AbstractParseTreeVisitor, ParseTree}
+import org.antlr.v4.runtime.{CharStream, CharStreams, CommonTokenStream, Lexer, Parser, TokenStream}
+import visitors.DependencyVisitor
 
-
+//TODO: fare qualcosa per SQLServer che permette di chiamare colonne con parole riservate
+// solo che poi durante il parse va tutto in malora, chiaramente -_-
 abstract class Dialect {
 
-  	val ddlMarkers = List("CREATE", "ALTER", "TRUNCATE")
-  	val identifier = IdentifierSymbol.COLON
+	protected val dependencyVisitor: Class[ _<: AbstractParseTreeVisitor[Unit] with DependencyVisitor]
 
-	val quoted_regex = "\".*\""
-	val quoted_open = "\""
-	val quoted_close = "\""
+	protected val lexer : Class[_<:Lexer]
 
-	val default_schema: String = quoted_open + "<USER>" + quoted_close
+	protected val parser: Class[_<:Parser]
 
-  	//Metodo che riscreverà in modo digerebile alcune peculiarità di alcuni dialetti
-  	def normalize(query: String) : List[Query]
-
-
-  	//La query in esame è un DDL? (create table / truncate table / ....)
-  	def isDDL(query:String):Boolean = ddlMarkers.exists(query.contains)
-
-	def quoted(name: String): String = {
-		var tokens = name.toUpperCase().split('.')
-		tokens = tokens.map(t => if (t.matches(quoted_regex)) t else quoted_open + t + quoted_close)
-		if (tokens.length == 1) {
-			tokens = Array(default_schema, tokens(0))
-		}
-		tokens.mkString(".")
+	def parseDependencies(txt:String) :  collection.mutable.Map[String, List[String]] = {
+		println("[DEBUG] Instantiating lexer...")
+		val lx: Lexer = lexer.getConstructor(classOf[CharStream]).newInstance(CharStreams.fromString(txt.toUpperCase())).asInstanceOf[Lexer]
+		println("[DEBUG] Creating token stream...")
+		val cts = new CommonTokenStream(lx)
+		println("[DEBUG] Parsing Stream...")
+		val pr: Parser = parser.getConstructor(classOf[TokenStream]).newInstance(cts).asInstanceOf[Parser]
+		val tree = getRoot(pr)
+		println("[DEBUG] Processing AST...")
+		val visitor = dependencyVisitor.newInstance().asInstanceOf[AbstractParseTreeVisitor[Unit] with DependencyVisitor]
+		tree.accept(visitor)
+		//println(tree.toStringTree(pr))
+		visitor.dependenciesMap
 	}
+
+	protected def getRoot(p:Parser) :ParseTree
 
 }
