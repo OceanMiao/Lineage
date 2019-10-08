@@ -7,7 +7,7 @@ import scala.collection.mutable
 
 
 class SQLServerDialect extends Dialect {
-	override protected val dependencyVisitor: Class[_ <: AbstractParseTreeVisitor[Unit] with DependencyVisitor] = classOf[TSqlVisitor[Unit]]
+	override protected val dependencyVisitor: Class[_ <: AbstractParseTreeVisitor[Unit] with DependencyVisitor] = classOf[TSqlVisitor]
 	override protected val lexer: Class[_ <: Lexer] = classOf[TSql.TSqlLexer]
 	override protected val parser: Class[_ <: Parser] = classOf[TSql.TSqlParser]
 

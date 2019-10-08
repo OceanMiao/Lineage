@@ -9,8 +9,9 @@ import scala.io.Source
 
 object Controller {
 
-	def parse(path:String, dialect:Dialect) : collection.mutable.Map[String, List[String]] = {
-		val source = Source.fromFile(path, "ISO-8859-1")
+	// Non cambiare encoding, a meno di non avere stretta esigenza, questo di default legge anche gli accenti :)
+	def parse(path:String, dialect:Dialect, encoding:String = "ISO-8859-1") : collection.mutable.Map[String, List[String]] = {
+		val source = Source.fromFile(path, encoding)
 		val text = source.getLines().map(s=>s.toUpperCase).mkString("\n")
 		source.close
 

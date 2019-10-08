@@ -8,13 +8,17 @@ import visitors.DependencyVisitor
 // solo che poi durante il parse va tutto in malora, chiaramente -_-
 abstract class Dialect {
 
+	// La classe del visitor che sarà utilizzato per navigare il codice
 	protected val dependencyVisitor: Class[ _<: AbstractParseTreeVisitor[Unit] with DependencyVisitor]
 
-	protected val lexer : Class[_<:Lexer]
+	// La classe del lexer che sarà utilizzato per capire il codice
+	protected val lexer: Class[_<:Lexer]
 
+	// La classe del parser che sarà utilizzato per capire i token
 	protected val parser: Class[_<:Parser]
 
-	def parseDependencies(txt:String) :  collection.mutable.Map[String, List[String]] = {
+	// Il metodo finale, che mette insieme i pezzi
+	def parseDependencies(txt:String):  collection.mutable.Map[String, List[String]] = {
 		println("[DEBUG] Instantiating lexer...")
 		val lx: Lexer = lexer.getConstructor(classOf[CharStream]).newInstance(CharStreams.fromString(txt.toUpperCase())).asInstanceOf[Lexer]
 		println("[DEBUG] Creating token stream...")
@@ -25,10 +29,11 @@ abstract class Dialect {
 		println("[DEBUG] Processing AST...")
 		val visitor = dependencyVisitor.newInstance().asInstanceOf[AbstractParseTreeVisitor[Unit] with DependencyVisitor]
 		tree.accept(visitor)
-		//println(tree.toStringTree(pr))
+		println("[DEBUG] Done!")
 		visitor.dependenciesMap
 	}
 
-	protected def getRoot(p:Parser) :ParseTree
+	// Il metodo che dichiara lo scopo della grammatica, o in altre parole la radice dell'albero, in modo da navigare tuuuutte le proprietà
+	protected def getRoot(p:Parser) : ParseTree
 
 }

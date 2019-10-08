@@ -4,6 +4,7 @@ import org.antlr.v4.runtime.{CharStreams, CommonTokenStream, ParserRuleContext}
 import org.antlr.v4.runtime.tree.{ErrorNode, ParseTree, ParseTreeListener, ParseTreeWalker, TerminalNode}
 import org.graphstream.graph.implementations._
 import TSql._
+import PlSql._
 
 object MainCommandLine  {
 
@@ -32,13 +33,21 @@ object MainCommandLine  {
 
 	def main(args: Array[String]) : Unit = {
 
-		val lexer = new TSqlLexer (CharStreams.fromString("select a=sum(x) over (partition by pluto), b=2*c into yuo from pluto left join pluto e on id=x".toUpperCase()))
+		/*val lexer = new TSqlLexer (CharStreams.fromString("select a=sum(x) over (partition by pluto), b=2*c into yuo from pluto left join pluto e on id=x".toUpperCase()))
 		val cts = new CommonTokenStream(lexer)
 
 		val parser = new TSqlParser(cts)
 
 		val tree = parser.tsql_file
-		tree.accept(new TSqlVisitor[Unit])
+		tree.accept(new TSqlVisitor)*/
+
+		val lexer = new PlSqlLexer (CharStreams.fromString("create table pippo as with pluto as (select * from x) select y from pluto;".toUpperCase()))
+		val cts = new CommonTokenStream(lexer)
+
+		val parser = new PlSqlParser(cts)
+
+		val tree = parser.sql_script()
+		tree.accept(new PlSqlVisitor)
 
 	}
 

@@ -5,11 +5,7 @@ import TSql._
 
 import scala.collection.mutable
 
-class TSqlVisitor[Void] extends TSqlParserBaseVisitor[Unit] with DependencyVisitor {
-
-	private val tmp_dependencies = new mutable.HashMap[String, mutable.HashSet[String]]()
-	private val ctes = new mutable.HashSet[String]()
-	private var dependencies = new mutable.HashMap[String, mutable.HashSet[String]]()
+class TSqlVisitor extends TSqlParserBaseVisitor[Unit] with DependencyVisitor {
 
 	override protected val tokenSeparator: Char = '.'
 	override protected val openQuote: Char = '['
@@ -17,6 +13,8 @@ class TSqlVisitor[Void] extends TSqlParserBaseVisitor[Unit] with DependencyVisit
 
 
 	override def standardize(identifier: String): String = {
+		if (identifier == null) return null
+
 		if (identifier.split(tokenSeparator).length == 1) {
 			if (identifier.startsWith("#"))
 				return "[tempdb].[" + identifier + "]"
@@ -25,42 +23,31 @@ class TSqlVisitor[Void] extends TSqlParserBaseVisitor[Unit] with DependencyVisit
 		super.standardize(identifier)
 	}
 
-	override def dependenciesMap : collection.mutable.Map[String, List[String]] = {
-		dependencies.map(t => t._1 -> t._2.toList)
-	}
-
-
-	/**
-	 * Metodo di utilità per stampare in maniera "parsabile" il testo di un albero. A default, la getText ignora gli spazi
-	 * @param node il nodo da cui partire
-	 * @param cum cumulata e testo iniziale a cui appendere
-	 * @return la stringa formata dal testo dei nodi concatenato dal parametro "sep" (default spazio)
-	 */
-	def stringify(node:ParseTree, cum:String ="", sep:String = " ") : String = {
-		if (node == null)
-			return ""
-
-		if  (node.getChildCount == 0)
-			return cum + node.getText + sep
-
-		var res = ""
-		for (i <- 0 to node.getChildCount)
-			res += stringify(node.getChild(i), cum)
-
-		res
-	}
 
 	// Questo metodo è un po' il cuore di tutto
 	// Viene invocato quando si incontra il nome di una tabella (potenziale dipendenza) e deve risalire fino a trovare la tabella impattata
 	// Ricordarsi di invocare il metodo <standardize> prima di ritornare
-	def parentTableDeclaration(node:ParseTree, level:Int = 0) : String = {
+	def parentTableDeclaration(node:ParseTree) : String = {
 		if (node.getParent == null)
 			return null
 
+
 		node match {
+			// INSERT
 			case p:TSqlParser.Insert_statementContext => {
 				if (p.ddl_object()!=null) standardize(p.ddl_object().getText) else null
 			}
+
+			// UPDATE
+			case p:TSqlParser.Update_statementContext => {
+				val fullName = p.ddl_object().full_table_name()
+				var res: String = if (fullName.database != null) fullName.database.getText  + tokenSeparator else ""
+				res += (if (fullName.schema != null) fullName.schema.getText + tokenSeparator else "")
+				standardize(res + (if (fullName.table != null) fullName.table.getText else ""))
+
+			}
+
+			// SUBQUERY + SELECT INTO + VIEWS
 			case p:TSqlParser.Select_statementContext => {
 				val t = if (p.query_expression() != null) {
 							if (p.query_expression().query_specification() != null)
@@ -68,20 +55,29 @@ class TSqlVisitor[Void] extends TSqlParserBaseVisitor[Unit] with DependencyVisit
 							else null
 						} else null
 
-				if ( t != null)
-					return standardize(t.getText)
+				if (t != null)
+					return standardize(t.getText) // SELECT INTO
 
+				// SUBQUERY
 				p.parent match {
 					case context: TSqlParser.Common_table_expressionContext =>
 						ctes += standardize(context.expression_name.getText)
-						return standardize(context.expression_name.getText)
+						standardize(context.expression_name.getText)
 
-					case _: TSqlParser.SubqueryContext => return parentTableDeclaration(node.getParent, level+1) // se è una subquery risali la gerarcia
+					case _: TSqlParser.SubqueryContext => standardize(parentTableDeclaration(node.getParent)) // se è una subquery risali la gerarcia
+
+					// CREATE VIEW
+					case p:TSqlParser.Create_viewContext => {
+						if (p.simple_name().schema != null)
+							standardize(p.simple_name().schema.getText + tokenSeparator + p.simple_name().name.getText)
+						else
+							standardize(p.simple_name().name.getText)
+					}
+					case _ => null
 				}
-				null
 			}
-
-			case _ => parentTableDeclaration(node.getParent, level+1)
+			// Per tutti gli altri casi, si risale l'albero fino a trovare uno dei nodi di interesse
+			case _ => parentTableDeclaration(node.getParent)
 		}
 	}
 
@@ -90,25 +86,7 @@ class TSqlVisitor[Void] extends TSqlParserBaseVisitor[Unit] with DependencyVisit
 		println("Processing query: " + stringify(ctx))
 		super.visitSql_clause(ctx)
 
-		//Fine query, quindi risolviamo le CTEs, sostituendole nella mappa
-		for (k <- ctes) {
-			val tables = tmp_dependencies.keys.filter(s => tmp_dependencies(s).contains(k)) //tutte le tabelle che hanno tra le dipendenze una certa CTE
-			for (t <- tables) {
-				tmp_dependencies(t).remove(k) // togliamo la cte
-
-				// e aggiungiamo le dipendenze della cte
-				tmp_dependencies(t) = tmp_dependencies(t) ++ tmp_dependencies(k)
-			}
-			tmp_dependencies.remove(k)
-		}
-
-		// Uniamo le dipendenze calcolate in questa query con quelle complessive dello script
-		// effettuiamo una merge tra le due mappe (in realtà le concateniamo e basta)
-		dependencies = dependencies ++ tmp_dependencies
-
-		// Puliamo tutti i buffer temporanei
-		ctes.clear()
-		tmp_dependencies.clear()
+		resolveCTE()
 	}
 
 
@@ -119,6 +97,7 @@ class TSqlVisitor[Void] extends TSqlParserBaseVisitor[Unit] with DependencyVisit
 	 * {@link #visitChildren} on {@code ctx}.</p>
 	 */
 	override def visitSelect_list(ctx: TSqlParser.Select_listContext): Unit = {
+		//todo: tenere traccia dei calcoli
 		super.visitSelect_list(ctx)
 	}
 
@@ -141,7 +120,7 @@ class TSqlVisitor[Void] extends TSqlParserBaseVisitor[Unit] with DependencyVisit
 		if (tableName == null)
 			return
 
-		if (tableName != null && !tmp_dependencies.contains(tableName))
+		if (!tmp_dependencies.contains(tableName))
 			tmp_dependencies += (tableName -> new mutable.HashSet[String]()) // creiamo la entry
 
 		// Teniamo solo i nomi di tabelle che appartengono a certi contesti, scartiamo cose non utili

@@ -4,8 +4,7 @@ import java.awt.event.{ActionEvent, ActionListener, MouseWheelEvent, MouseWheelL
 import java.awt.{BorderLayout, Color, Event}
 import java.io.File
 
-
-import SQL.{Dialect, SQLServerDialect}
+import SQL.{Dialect, OracleDialect, SQLServerDialect}
 import javax.swing.filechooser.FileFilter
 import javax.swing.{SwingUtilities, _}
 import org.graphstream.graph.implementations._
@@ -15,7 +14,7 @@ import org.graphstream.ui.view._
 object MainGUI  extends App with ActionListener with ViewerListener {
 	private val search_icon = "./resources/search.png"
 	private val CSS_PATH = System.getProperty("user.dir") + "/graph.css"
-	private val dialects = Map[String, Dialect](("SQLServer" -> new SQLServerDialect))
+	private val dialects = Map[String, Dialect](("SQL Server" -> new SQLServerDialect), ("Oracle" -> new OracleDialect))
 
 	private var graphMap: collection.mutable.Map[String, List[String]] = collection.mutable.Map[String, List[String]]()
 	private var viewer:Viewer = _
@@ -82,7 +81,11 @@ object MainGUI  extends App with ActionListener with ViewerListener {
 		graph = new MultiGraph("embedded")
 
 		// 2. Li aggiungo al grafo
-		nodi.foreach(n => graph.addNode[SingleNode](n).setAttribute("ui.label", n))
+		nodi.foreach(n => {
+			val v = graph.addNode[MultiNode](n)
+			v.setAttribute("ui.label", n)
+			v.setAttribute("layout.weight", "4")
+		})
 
 		// 3. Scorro la mappa
 		// per ciascuna coppia (NODO; LISTA), scorro la lista, ed aggiungo un nodo
