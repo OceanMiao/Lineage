@@ -17,7 +17,7 @@ class TSqlVisitor extends TSqlParserBaseVisitor[Unit] with DependencyVisitor {
 
 		if (identifier.split(tokenSeparator).length == 1) {
 			if (identifier.startsWith("#"))
-				return "[tempdb].[" + identifier + "]"
+				return  identifier
 			return super.standardize("[DBO]." + identifier)
 		}
 		super.standardize(identifier)
