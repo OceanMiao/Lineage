@@ -8,6 +8,8 @@ import visitors.DependencyVisitor
 // solo che poi durante il parse va tutto in malora, chiaramente -_-
 abstract class Dialect {
 
+	val description:String = "SQL"
+
 	// La classe del visitor che sarà utilizzato per navigare il codice
 	protected val dependencyVisitor: Class[ _<: AbstractParseTreeVisitor[Unit] with DependencyVisitor]
 

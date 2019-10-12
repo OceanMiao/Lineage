@@ -1,78 +1,30 @@
 package GUI
 
-import java.awt.event.{ActionEvent, ActionListener, MouseWheelEvent, MouseWheelListener}
-import java.awt.{BorderLayout, Color, Event}
-import java.io.File
+
+import java.awt.BorderLayout
+import java.awt.event.ActionEvent
 
 import SQL.{Dialect, OracleDialect, SQLServerDialect}
-import javax.swing.filechooser.FileFilter
-import javax.swing.{SwingUtilities, _}
+import javax.swing.{JMenu, JMenuBar, JMenuItem, SwingUtilities, _}
 import org.graphstream.graph.implementations._
 import org.graphstream.ui.swingViewer._
 import org.graphstream.ui.view._
 
-object MainGUI  extends App with ActionListener with ViewerListener {
+object MainGUI  extends App {
 	private val search_icon = "./resources/search.png"
 	private val CSS_PATH = System.getProperty("user.dir") + "/graph.css"
-	private val dialects = Map[String, Dialect](("SQL Server" -> new SQLServerDialect), ("Oracle" -> new OracleDialect))
+	private val controller = new Controller
 
-	private var graphMap: collection.mutable.Map[String, List[String]] = collection.mutable.Map[String, List[String]]()
+	val dialects = Map[String, Dialect](("SQL Server" -> new SQLServerDialect), ("Oracle" -> new OracleDialect))
+
+	var graphMap: collection.mutable.Map[String, List[String]] = collection.mutable.Map[String, List[String]]()
 	private var viewer:Viewer = _
-	private var graphPanel:ViewPanel = _
-	private var graph:MultiGraph = _
+	var graphPanel:ViewPanel = _
+	var graph:MultiGraph = _
 	private var fromViewer:ViewerPipe= _
 
 	// Per gestire il loop eventi dal grafo
-	private var loop:Boolean = true
-
-	override def viewClosed(viewName: String) = loop = false
-
-	// Metodo invocato quando si pusha su un nodo
-	override def buttonPushed(id: String) = {}
-
-	// Metodo invocato quando si alza il click su un nodo
-	override def buttonReleased(id: String): Unit = {
-		val node = graph.getNode[MultiNode](id)
-		if (node.hasAttribute("ui.class") && node.getAttribute[String]("ui.class") == "clicked") {
-			node.removeAttribute("ui.class")
-			node.addAttribute("ui.class", "")
-			return
-		}
-		if (!node.hasAttribute("ui.class") || (node.hasAttribute("ui.class") && node.getAttribute[String]("ui.class")==""))
-			node.addAttribute("ui.class", "clicked")
-
-	}
-
-	override def actionPerformed(e: ActionEvent): Unit = {
-		/*  MI DISPIACE che sia codice così "javoso" qua, si potrebbe rifattorizzare */
-		if (e.getSource == fileChoose) {
-			// File chooser button
-			val fc = new JFileChooser()
-			fc.setFileFilter(new FileFilter {
-				override def accept(f: File): Boolean = f.getName().toLowerCase().endsWith(".sql") || f.isDirectory
-
-				override def getDescription: String = "Only SQL files"
-			})
-			fc.setDialogTitle("Choose an SQL file to open")
-			fc.showOpenDialog(frame)
-			if (fc.getSelectedFile != null) {
-				val parsedMap = Controller.parse(fc.getSelectedFile.getAbsolutePath, dialects(dialectChooser.getSelectedItem.toString)).toSeq
-				graphMap = collection.mutable.Map[String, List[String]]((graphMap.toSeq ++ parsedMap).groupBy(_._1).mapValues(_.map(_._2).flatten.toList).toSeq: _*)
-				updateGraph(graphMap.toMap)
-			}
-		}
-
-		if (e.getSource == search) {
-			// Filtraggio del grafo
-			val getMe = tf.getSelectedItem.toString
-			updateGraph(graphMap.toMap.filter( t => t._1 == getMe), false)
-		}
-
-		if (e.getSource == reset) {
-			// Reset del filtro
-			updateGraph(graphMap.toMap)
-		}
-	}
+	var loop:Boolean = true
 
 	// raw sarà la mappa degli archi del grafo: NODO -> LISTA DI NODI CONNESSI
 	private def createGraph(raw:Map[String, List[String]], id:String = "dependencies") : Viewer = {
@@ -100,30 +52,18 @@ object MainGUI  extends App with ActionListener with ViewerListener {
 	}
 
 
-	private def updateGraph(graphMap:Map[String, List[String]], filterCombobox:Boolean = true): Unit = {
+	def updateGraph(graphMap:Map[String, List[String]], filterCombobox:Boolean = true): Unit = {
 		if (graphPanel != null) {
 			frame.remove(graphPanel)
-			frame.remove(topLine)
 			frame.remove(bottomLine)
 		}
 		viewer = createGraph(graphMap)
 		graphPanel = viewer.addDefaultView(false)
-		graphPanel.addMouseWheelListener(new MouseWheelListener {
-			override def mouseWheelMoved(mwe: MouseWheelEvent): Unit = {
-				if (Event.ALT_MASK != 0) if (mwe.getWheelRotation > 0) {
-					val new_view_percent = graphPanel.getCamera.getViewPercent + 0.05
-					graphPanel.getCamera.setViewPercent(new_view_percent)
-				}
-				else if (mwe.getWheelRotation < 0) {
-					val current_view_percent = graphPanel.getCamera.getViewPercent
-					if (current_view_percent > 0.05) graphPanel.getCamera.setViewPercent(current_view_percent - 0.05)
-				}
-			}
-		})
+		graphPanel.addMouseWheelListener(controller)
 
 		frame.getContentPane.add(BorderLayout.CENTER, graphPanel)
 		graphPanel.setLayout(new BorderLayout)
-		graphPanel.add(BorderLayout.PAGE_START, topLine)
+
 		if (graphMap.keySet.size > 0)
 			graphPanel.add(BorderLayout.SOUTH, bottomLine)
 
@@ -136,7 +76,7 @@ object MainGUI  extends App with ActionListener with ViewerListener {
 		}
 
 		fromViewer = viewer.newViewerPipe
-		fromViewer.addViewerListener(this)
+		fromViewer.addViewerListener(controller)
 		fromViewer.addSink(graph)
 
 
@@ -148,16 +88,28 @@ object MainGUI  extends App with ActionListener with ViewerListener {
 
 	val frame = new JFrame("Lineage")
 
-	val fileChoose = new JButton ("Import script")
-	fileChoose.addActionListener(this)
+	val menuBar: JMenuBar = new JMenuBar
+	val fileMenu: JMenu = new JMenu("File")
+	val menuImport: JMenu = new JMenu("Import script")
+	menuImport.setToolTipText("Import a custom SQL script")
 
+	val dialectsMenu: List[JMenuItem] = dialects.keys.map(dialect => new JMenuItem(dialect)).toList.sortBy(m => m.getText)
+	dialectsMenu.foreach(d => {
+		d.addActionListener((e:ActionEvent) => Controller.importDialect(dialects(d.getText)))
+		menuImport.add(d)
+	})
 
-	val dialectChooser = new JComboBox[String](dialects.keySet.toArray)
+	//menuImport.addActionListener(controller)
 
-	val topLine: JPanel = new JPanel // the panel is not visible in output
-	topLine.add(fileChoose)
-	topLine.add(dialectChooser)
-	topLine.setBackground(Color.WHITE)
+	fileMenu.add(menuImport)
+
+	val clearMenu: JMenuItem = new JMenuItem("Clear view")
+	clearMenu.addActionListener(controller)
+
+	fileMenu.add(clearMenu)
+
+	menuBar.add(fileMenu)
+	frame.setJMenuBar(menuBar)
 
 
 	//Creazione Barra in basso
@@ -168,8 +120,9 @@ object MainGUI  extends App with ActionListener with ViewerListener {
 	val search: JButton = new JButton("Search")
 	val reset: JButton = new JButton("Reset")
 	//search.setIcon(new ImageIcon(search_icon))
-	search.addActionListener(this)
-	reset.addActionListener(this)
+	search.addActionListener(controller)
+	reset.addActionListener(controller)
+
 
 	bottomLine.add(label)
 	bottomLine.add(tf)
