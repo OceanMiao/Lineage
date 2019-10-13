@@ -5,7 +5,6 @@ import java.awt.{BorderLayout, Font, Color}
 import java.awt.event.ActionEvent
 
 import SQL.{Dialect, OracleDialect, SQLServerDialect}
-import com.apple.eawt.Application
 import javax.swing.{JMenu, JMenuBar, JMenuItem, SwingUtilities, _}
 import org.graphstream.graph.implementations._
 import org.graphstream.ui.swingViewer._
@@ -91,7 +90,8 @@ object DataLineage  extends App {
 
 	System.getProperty("os.name") match {
 		case "Mac OS X" => {
-			Application.getApplication.setDockIconImage(new ImageIcon(LOGO_PATH).getImage)
+			Class.forName("com.apple.eawt.Application").getMethod("getApplication").invoke(null).
+				getClass.getMethod("setDockIconImage").invoke(new ImageIcon(LOGO_PATH).getImage)
 			System.setProperty("apple.laf.useScreenMenuBar", "true")
 			System.setProperty("com.apple.mrj.application.apple.menu.about.name", "Lineage")
 		}
