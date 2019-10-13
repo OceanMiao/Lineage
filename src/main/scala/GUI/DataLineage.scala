@@ -1,7 +1,7 @@
 package GUI
 
 
-import java.awt.{BorderLayout, Font, Color}
+import java.awt.{BorderLayout, Color, Font, Image}
 import java.awt.event.ActionEvent
 
 import SQL.{Dialect, OracleDialect, SQLServerDialect}
@@ -90,8 +90,9 @@ object DataLineage  extends App {
 
 	System.getProperty("os.name") match {
 		case "Mac OS X" => {
-			Class.forName("com.apple.eawt.Application").getMethod("getApplication").invoke(null).
-				getClass.getMethod("setDockIconImage").invoke(new ImageIcon(LOGO_PATH).getImage)
+			// Reflection black magic to use a library that is only there in mac os without actually importing it, so that the same code compile on windows
+			val application = Class.forName("com.apple.eawt.Application").getMethod("getApplication").invoke(null)
+			application.getClass.getDeclaredMethod("setDockIconImage", classOf[Image]).invoke(application, new ImageIcon(LOGO_PATH).getImage)
 			System.setProperty("apple.laf.useScreenMenuBar", "true")
 			System.setProperty("com.apple.mrj.application.apple.menu.about.name", "Lineage")
 		}
