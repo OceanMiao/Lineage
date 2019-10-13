@@ -5,14 +5,16 @@ import java.awt.BorderLayout
 import java.awt.event.ActionEvent
 
 import SQL.{Dialect, OracleDialect, SQLServerDialect}
+import com.apple.eawt.Application
 import javax.swing.{JMenu, JMenuBar, JMenuItem, SwingUtilities, _}
 import org.graphstream.graph.implementations._
 import org.graphstream.ui.swingViewer._
 import org.graphstream.ui.view._
 
 object MainGUI  extends App {
-	private val search_icon = "./resources/search.png"
-	private val CSS_PATH = System.getProperty("user.dir") + "/graph.css"
+
+	private val CSS_PATH = System.getProperty("user.dir") + "/Resources/graph.css"
+	private val LOGO_PATH = System.getProperty("user.dir") + "/Resources/logo.png"
 	private val controller = new Controller
 
 	val dialects = Map[String, Dialect](("SQL Server" -> new SQLServerDialect), ("Oracle" -> new OracleDialect))
@@ -85,8 +87,17 @@ object MainGUI  extends App {
 
 	}
 
-
 	val frame = new JFrame("Lineage")
+
+	System.getProperty("os.name") match {
+		case "Mac OS X" => {
+			Application.getApplication.setDockIconImage(new ImageIcon(LOGO_PATH).getImage)
+			System.setProperty("apple.laf.useScreenMenuBar", "true")
+			System.setProperty("com.apple.mrj.application.apple.menu.about.name", "Lineage")
+		}
+		case _ =>frame.setIconImage(new ImageIcon(LOGO_PATH).getImage)
+	}
+
 
 	val menuBar: JMenuBar = new JMenuBar
 	val fileMenu: JMenu = new JMenu("File")

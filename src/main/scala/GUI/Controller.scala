@@ -1,15 +1,16 @@
 package GUI
 
-import java.awt.Event
+import java.awt.{BorderLayout, Cursor, Event}
 import java.awt.event.{ActionEvent, ActionListener, MouseWheelEvent, MouseWheelListener}
 import java.io.File
 
 import GUI.MainGUI._
 import SQL.Dialect
-import javax.swing.JFileChooser
+import javax.swing.{JDialog, JFileChooser, JLabel, JProgressBar, SwingUtilities}
 import javax.swing.filechooser.FileFilter
 import org.graphstream.graph.implementations.MultiNode
 import org.graphstream.ui.view.ViewerListener
+import javax.swing.plaf.ProgressBarUI
 
 import scala.io.Source
 
@@ -30,6 +31,7 @@ class Controller extends ActionListener with ViewerListener with MouseWheelListe
 			return
 		}
 		if (!node.hasAttribute("ui.class") || (node.hasAttribute("ui.class") && node.getAttribute[String]("ui.class")==""))
+			MainGUI.graph.getNodeSet[MultiNode].forEach(n => n.removeAttribute("ui.class"))
 			node.addAttribute("ui.class", "clicked")
 
 	}
@@ -76,7 +78,11 @@ object Controller {
 		val text = source.getLines().map(s => s.toUpperCase).mkString("\n")
 		source.close
 
-		dialect.parseDependencies(text)
+		MainGUI.frame.setCursor(Cursor.WAIT_CURSOR)
+		var res = dialect.parseDependencies(text)
+		MainGUI.frame.setCursor(Cursor.DEFAULT_CURSOR)
+
+		return res
 
 	}
 
