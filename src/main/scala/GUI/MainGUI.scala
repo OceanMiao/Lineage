@@ -66,7 +66,7 @@ object MainGUI  extends App {
 		frame.getContentPane.add(BorderLayout.CENTER, graphPanel)
 		graphPanel.setLayout(new BorderLayout)
 
-		if (graphMap.keySet.size > 0)
+		if (graphMap.keySet.nonEmpty)
 			graphPanel.add(BorderLayout.SOUTH, bottomLine)
 
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE)
@@ -74,7 +74,7 @@ object MainGUI  extends App {
 
 		if (filterCombobox) {
 			tf.removeAllItems()
-			graphMap.keySet.toList.sorted.foreach(tf.addItem(_))
+			graphMap.keySet.toList.sorted.foreach(tf.addItem)
 		}
 
 		fromViewer = viewer.newViewerPipe

@@ -78,11 +78,11 @@ object Controller {
 		val text = source.getLines().map(s => s.toUpperCase).mkString("\n")
 		source.close
 
-		MainGUI.frame.setCursor(Cursor.WAIT_CURSOR)
-		var res = dialect.parseDependencies(text)
-		MainGUI.frame.setCursor(Cursor.DEFAULT_CURSOR)
+		MainGUI.frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR))
+		val res = dialect.parseDependencies(text)
+		MainGUI.frame.setCursor(Cursor.getDefaultCursor)
 
-		return res
+		res
 
 	}
 
@@ -94,6 +94,7 @@ object Controller {
 			override def getDescription: String = "Only SQL files"
 		})
 		fc.setDialogTitle("Choose a " + d.description + " file to open")
+		fc.setControlButtonsAreShown(true)
 		fc.showOpenDialog(frame)
 		if (fc.getSelectedFile != null) {
 			val parsedMap = Controller.parse(fc.getSelectedFile.getAbsolutePath, d).toSeq
