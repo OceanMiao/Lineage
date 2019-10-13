@@ -1,7 +1,7 @@
 package GUI
 
 
-import java.awt.BorderLayout
+import java.awt.{BorderLayout, Font, Color}
 import java.awt.event.ActionEvent
 
 import SQL.{Dialect, OracleDialect, SQLServerDialect}
@@ -11,7 +11,7 @@ import org.graphstream.graph.implementations._
 import org.graphstream.ui.swingViewer._
 import org.graphstream.ui.view._
 
-object MainGUI  extends App {
+object DataLineage  extends App {
 
 	private val CSS_PATH = System.getProperty("user.dir") + "/Resources/graph.css"
 	private val LOGO_PATH = System.getProperty("user.dir") + "/Resources/logo.png"
@@ -125,7 +125,7 @@ object MainGUI  extends App {
 
 	//Creazione Barra in basso
 	val bottomLine: JPanel = new JPanel // the panel is not visible in output
-	val label: JLabel = new JLabel("Search for table")
+	val searchLabel: JLabel = new JLabel("Search for table")
 	val tf: JComboBox[String] = new JComboBox[String](graphMap.keys.toArray)
 	tf.setEditable(true)
 	val search: JButton = new JButton("Search")
@@ -134,8 +134,20 @@ object MainGUI  extends App {
 	search.addActionListener(controller)
 	reset.addActionListener(controller)
 
+	val eastPanel = new JPanel
 
-	bottomLine.add(label)
+	val detailLabel = new JLabel("Table details")
+	val boldFont = detailLabel.getFont().deriveFont(Font.BOLD, 14f)
+
+	val selectedList = new JList[String](Array[String]())
+
+	eastPanel.add(BorderLayout.NORTH, detailLabel)
+	eastPanel.add(BorderLayout.CENTER, selectedList)
+	eastPanel.setVisible(false)
+
+	frame.getContentPane.add(BorderLayout.EAST, eastPanel)
+
+	bottomLine.add(searchLabel)
 	bottomLine.add(tf)
 	bottomLine.add(search)
 	bottomLine.add(reset)

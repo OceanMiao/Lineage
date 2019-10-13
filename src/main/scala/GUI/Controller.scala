@@ -4,9 +4,9 @@ import java.awt.{BorderLayout, Cursor, Event}
 import java.awt.event.{ActionEvent, ActionListener, MouseWheelEvent, MouseWheelListener}
 import java.io.File
 
-import GUI.MainGUI._
+import GUI.DataLineage._
 import SQL.Dialect
-import javax.swing.{JDialog, JFileChooser, JLabel, JProgressBar, SwingUtilities}
+import javax.swing.{JDialog, JFileChooser, JLabel, JProgressBar, SwingUtilities, JOptionPane}
 import javax.swing.filechooser.FileFilter
 import org.graphstream.graph.implementations.MultiNode
 import org.graphstream.ui.view.ViewerListener
@@ -17,22 +17,26 @@ import scala.io.Source
 class Controller extends ActionListener with ViewerListener with MouseWheelListener {
 
     // Chiusura della finestra con il grafo
-	override def viewClosed(viewName: String): Unit = MainGUI.loop = false
+	override def viewClosed(viewName: String): Unit = DataLineage.loop = false
 
 	// Metodo invocato quando si pusha su un nodo
 	override def buttonPushed(id: String): Unit = {}
 
 	// Metodo invocato quando si alza il click su un nodo
 	override def buttonReleased(id: String): Unit = {
-		val node = MainGUI.graph.getNode[MultiNode](id)
+		val node = DataLineage.graph.getNode[MultiNode](id)
 		if (node.hasAttribute("ui.class") && node.getAttribute[String]("ui.class") == "clicked") {
 			node.removeAttribute("ui.class")
 			node.addAttribute("ui.class", "")
+			Controller.updateDetailPanel(null)
 			return
 		}
-		if (!node.hasAttribute("ui.class") || (node.hasAttribute("ui.class") && node.getAttribute[String]("ui.class")==""))
-			MainGUI.graph.getNodeSet[MultiNode].forEach(n => n.removeAttribute("ui.class"))
+		if (!node.hasAttribute("ui.class") || (node.hasAttribute("ui.class") && node.getAttribute[String]("ui.class")=="")) {
+			DataLineage.graph.getNodeSet[MultiNode].forEach(n => n.removeAttribute("ui.class"))
 			node.addAttribute("ui.class", "clicked")
+			Controller.updateDetailPanel(node.getId)
+		}
+
 
 	}
 
@@ -52,15 +56,15 @@ class Controller extends ActionListener with ViewerListener with MouseWheelListe
 		/*  MI DISPIACE che sia codice così "javoso" qua, si potrebbe rifattorizzare */
 		e.getSource match {
 
-			case MainGUI.search => {
+			case DataLineage.search => {
 				// Filtraggio del grafo
 				val getMe = tf.getSelectedItem.toString
 				updateGraph(graphMap.toMap.filter( t => t._1 == getMe), false)
 			}
 
-			case MainGUI.reset => updateGraph(graphMap.toMap)
+			case DataLineage.reset => updateGraph(graphMap.toMap)
 
-			case MainGUI.clearMenu => {
+			case DataLineage.clearMenu => {
 				graphMap = collection.mutable.Map[String, List[String]]()
 				updateGraph(graphMap.toMap)
 			}
@@ -78,11 +82,20 @@ object Controller {
 		val text = source.getLines().map(s => s.toUpperCase).mkString("\n")
 		source.close
 
-		MainGUI.frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR))
-		val res = dialect.parseDependencies(text)
-		MainGUI.frame.setCursor(Cursor.getDefaultCursor)
+		DataLineage.frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR))
+		var res = collection.mutable.Map[String, List[String]]()
+		try {
+			res = dialect.parseDependencies(text)
+		}
+		catch {
+			case e:Exception => JOptionPane.showMessageDialog(DataLineage.frame, "Error while processing " + path +
+				"\n" + e.getMessage + "\nPlease, verify that you are passing a file written in " + dialect.description + " dialect.",
+				"Parsing error",
+				JOptionPane.ERROR_MESSAGE)
+		}
 
-		res
+		DataLineage.frame.setCursor(Cursor.getDefaultCursor)
+		return res
 
 	}
 
@@ -102,5 +115,22 @@ object Controller {
 			updateGraph(graphMap.toMap)
 		}
 	}
+
+	def updateDetailPanel(table:String) : Unit = {
+		DataLineage.eastPanel.setVisible(false)
+
+		if (table != null) {
+			DataLineage.detailLabel.setText(table)
+			DataLineage.detailLabel.setFont(DataLineage.boldFont)
+			//TODO: fetch the list of columns and put them in the list
+			// also, make the list look decent
+			//MainGUI.selectedList.setListData(Array[String]("a", "b", "c"))
+			DataLineage.eastPanel.setVisible(true)
+		}
+
+		DataLineage.frame.validate()
+
+	}
+
 
 }

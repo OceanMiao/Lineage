@@ -28,6 +28,8 @@ abstract class Dialect {
 		println("[DEBUG] Parsing Stream...")
 		val pr: Parser = parser.getConstructor(classOf[TokenStream]).newInstance(cts).asInstanceOf[Parser]
 		val tree = getRoot(pr)
+		if (pr.getNumberOfSyntaxErrors > 0) throw new IllegalArgumentException("The file provided contained " + pr.getNumberOfSyntaxErrors + " syntax error(s).")
+
 		println("[DEBUG] Processing AST...")
 		val visitor = dependencyVisitor.newInstance().asInstanceOf[AbstractParseTreeVisitor[Unit] with DependencyVisitor]
 		tree.accept(visitor)
